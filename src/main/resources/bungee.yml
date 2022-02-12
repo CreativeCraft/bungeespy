@@ -1,5 +1,5 @@
 name: BungeeSpy
-version: @version@
-main: org.creativecraft.bungeespy.BungeeSpy
-description: Simple network-wide command spying.
+version: '${version}'
+main: org.creativecraft.bungeespy.BungeeSpyPlugin
+description: Simple network-wide command spying for BungeeCord.
 author: Log1x

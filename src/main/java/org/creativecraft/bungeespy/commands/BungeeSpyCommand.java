@@ -1,21 +1,51 @@
 package org.creativecraft.bungeespy.commands;
 
-import co.aikar.commands.annotation.*;
-import co.aikar.commands.BaseCommand;
+import co.aikar.commands.CommandHelp;
+import co.aikar.commands.HelpEntry;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
+import org.creativecraft.bungeespy.BungeeSpyPlugin;
 import net.md_5.bungee.api.plugin.Listener;
-import org.creativecraft.bungeespy.BungeeSpy;
+import co.aikar.commands.BaseCommand;
+import co.aikar.commands.annotation.*;
 
-import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
-@CommandAlias("bungeespy")
-@Description("Spy on player commands network-wide.")
+@CommandAlias("%bungeespy")
+@Description("Simple network-wide command spying for BungeeCord.")
 public final class BungeeSpyCommand extends BaseCommand implements Listener {
-    @Dependency
-    private BungeeSpy plugin;
+    private final BungeeSpyPlugin plugin;
+
+    public BungeeSpyCommand(BungeeSpyPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    /**
+     * Retrieve the plugin help.
+     *
+     * @param sender The command sender.
+     */
+    @HelpCommand
+    @Syntax("[page]")
+    @Description("View the plugin help.")
+    @CommandCompletion("@nothing")
+    public void onHelp(CommandSender sender, CommandHelp help) {
+        plugin.sendRawMessage(sender, plugin.localize("messages.help.header"));
+
+        for (HelpEntry entry : help.getHelpEntries()) {
+            plugin.sendRawMessage(
+                sender,
+                plugin.localize("messages.help.format")
+                    .replace("{command}", entry.getCommand())
+                    .replace("{parameters}", entry.getParameterSyntax())
+                    .replace("{description}", plugin.localize("messages." + entry.getCommand().split("\\s+")[1] + ".description"))
+            );
+        }
+
+        plugin.sendRawMessage(sender, plugin.localize("messages.help.footer"));
+    }
 
     /**
      * Toggle network-wide command spying.
@@ -26,20 +56,16 @@ public final class BungeeSpyCommand extends BaseCommand implements Listener {
     @Subcommand("toggle")
     @CommandPermission("bungeespy.use")
     @Description("Toggle network-wide command spying.")
-    public void onBungeeSpyCommand(ProxiedPlayer player, @Optional String target) {
-        UUID id = player.getUniqueId();
-
-        if (plugin.isSpy(id)) {
-            plugin.removeSpy(id);
-
-            plugin.message(player, plugin.getConfig().getString("locale.toggle-off"));
+    public void onToggle(ProxiedPlayer player) {
+        if (plugin.getSpyManager().isSpy(player.getUniqueId())) {
+            plugin.getSpyManager().removeSpy(player.getUniqueId());
+            plugin.sendMessage(player, plugin.localize("messages.toggle.off"));
 
             return;
         }
 
-        plugin.addSpy(id);
-
-        plugin.message(player, plugin.getConfig().getString("locale.toggle-on"));
+        plugin.getSpyManager().addSpy(player.getUniqueId());
+        plugin.sendMessage(player, plugin.localize("messages.toggle.on"));
     }
 
     /**
@@ -50,26 +76,26 @@ public final class BungeeSpyCommand extends BaseCommand implements Listener {
     @Subcommand("list")
     @CommandPermission("bungeespy.list")
     @Description("List players who have spy enabled.")
-    public void onBungeeSpyListCommand(CommandSender sender) {
-        Collection<String> keys = plugin.getConfig().getSection("spies").getKeys();
-        HashSet<String> spies = new HashSet<String>();
+    public void onList(CommandSender sender) {
+        Set<String> spies = new HashSet<String>();
 
-        keys.forEach(spy -> {
-            ProxiedPlayer s = plugin.getProxy().getPlayer(UUID.fromString(spy));
+        plugin.getSpyManager().getSpies().forEach(spy -> {
+            ProxiedPlayer player = plugin.getProxy().getPlayer(UUID.fromString(spy));
 
-            if (s == null) {
+            if (player == null) {
                 return;
             }
 
-            spies.add(s.getName());
+            spies.add(player.getName());
         });
 
-        plugin.message(
+        plugin.sendMessage(
             sender,
-            plugin.getConfig().getString("locale.list")
+            plugin.localize("messages.list.format")
                 .replace("{0}", spies.size() != 0 ?
-                    String.join(", ", spies) :
-                    plugin.getConfig().getString("locale.list-none"))
+                    String.join(plugin.localize("messages.list.delimiter"), spies) :
+                    plugin.localize("messages.list.none")
+                )
         );
     }
 
@@ -79,15 +105,16 @@ public final class BungeeSpyCommand extends BaseCommand implements Listener {
      * @param sender The command sender.
      */
     @Subcommand("reload")
-    @CommandPermission("bungeespy.reload")
+    @CommandPermission("bungeespy.admin")
     @Description("Reload the plugin configuration.")
-    public void onBungeeSpyReloadCommand(CommandSender sender) {
+    public void onReload(CommandSender sender) {
         try {
-            plugin.registerConfig();
+            plugin.getConfig().forceReload();
+            plugin.getMessages().forceReload();
 
-            plugin.message(sender, plugin.getConfig().getString("locale.config-reload"));
+            plugin.sendMessage(sender, plugin.localize("messages.reload.success"));
         } catch (Exception e) {
-            plugin.message(sender, plugin.getConfig().getString("locale.config-reload-failed"));
+            plugin.sendMessage(sender, plugin.localize("messages.reload.failed"));
         }
     }
 }

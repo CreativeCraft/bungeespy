@@ -1,12 +1,10 @@
-import org.apache.tools.ant.filters.ReplaceTokens
-
 plugins {
-  id 'com.github.johnrengelman.shadow' version '5.2.0'
+  id 'com.github.johnrengelman.shadow' version '7.1.1'
   id 'java'
 }
 
 group = 'org.creativecraft'
-version = '1.0-SNAPSHOT'
+version = '1.0.1'
 
 sourceCompatibility = '1.8'
 targetCompatibility = '1.8'
@@ -14,23 +12,34 @@ targetCompatibility = '1.8'
 repositories {
     mavenCentral()
     maven { url = 'https://oss.sonatype.org/content/groups/public/' }
-    maven { url = "https://repo.aikar.co/content/groups/aikar/" }
+    maven { url = 'https://repo.aikar.co/content/groups/aikar/' }
+    maven { url = 'https://repo.minebench.de/' }
+    maven { url = 'https://jitpack.io' }
 }
 
 dependencies {
     compileOnly 'net.md-5:bungeecord-api:1.15-SNAPSHOT'
-    compile "co.aikar:acf-bungee:0.5.0-SNAPSHOT"
+    implementation 'co.aikar:acf-bungee:0.5.0-SNAPSHOT'
+    implementation 'de.themoep:minedown:1.7.0-SNAPSHOT'
+    implementation 'com.github.simplix-softworks:simplixstorage:3.2.4'
+    implementation 'org.bstats:bstats-bungeecord-lite:1.8'
 }
 
 shadowJar {
-  relocate 'co.aikar.commands', 'org.creativecraft.bungeespy.acf'
-  relocate 'co.aikar.locales', 'org.creativecraft.bungeespy.locales'
+  relocate 'co.aikar.commands', 'org.creativecraft.example.acf'
+  relocate 'co.aikar.locales', 'org.creativecraft.example.locales'
+  relocate 'de.themoep.minedown', 'org.creativecraft.example.minedown'
+  relocate 'de.leonhard.storage', 'org.creativecraft.example.storage'
+  relocate 'org.bstats', 'org.creativecraft.example.bstats'
 }
 
 processResources {
-    from(sourceSets.main.resources.srcDirs) {
-        filter ReplaceTokens, tokens: [version: version]
-    }
+  def props = [version: version]
+  inputs.properties props
+  filteringCharset 'UTF-8'
+  filesMatching('bungee.yml') {
+    expand props
+  }
 }
 
 build.dependsOn shadowJar
